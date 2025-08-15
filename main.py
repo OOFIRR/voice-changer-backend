@@ -1,5 +1,5 @@
 # ================================================
-# main.py — גרסה מתוקנת, מאובטחת ומוקשחת
+# main.py — גרסה מתוקנת, מאובטחת ומוקשחת עם ניקוי API Key
 # ================================================
 import uvicorn
 import httpx
@@ -9,46 +9,51 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-# שלב 1: קריאת מפתח ה-API ממשתני הסביבה
+# קריאת מפתח ה-API ממשתני הסביבה
 EDEN_AI_API_KEY = os.environ.get("EDEN_AI_API_KEY")
 EDEN_API_URL = "https://api.edenai.run/v2/audio/speech_to_speech"
 
+# בדיקת מפתח API וניקויו
+if EDEN_AI_API_KEY:
+    if EDEN_AI_API_KEY != EDEN_AI_API_KEY.strip():
+        print("⚠️ אזהרה: EDEN_AI_API_KEY כלל רווחים או ירידת שורה — בוצעה הסרה אוטומטית.")
+        EDEN_AI_API_KEY = EDEN_AI_API_KEY.strip()
+else:
+    print("❌ שגיאה: EDEN_AI_API_KEY לא נמצא במשתני הסביבה.")
+
 app = FastAPI()
 
-# שלב 2: הגדרת CORS
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ⚠️ בייצור - לשנות לרשימת דומיינים מורשים בלבד
+    allow_origins=["*"],  # ⚠️ בייצור מומלץ להגדיר דומיינים מורשים בלבד
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# נקודת קצה לבדיקה שהשרת חי
+# בדיקת חיות השרת
 @app.get("/")
 def read_root():
     return {"message": "שרת מעודכן ומוכן לפעולה!"}
 
-# שלב 3: פונקציה מרכזית להמרת קול
+# המרת קול
 @app.post("/convert-voice-eden/")
 async def convert_voice_eden(
     source_audio: UploadFile = File(...),
     reference_audio: UploadFile = File(...)
 ):
-    # בדיקת מפתח API
     if not EDEN_AI_API_KEY:
         return JSONResponse(
             status_code=500,
             content={"error": "EDEN_AI_API_KEY environment variable not found on the server."}
         )
 
-    # בדיקת סוגי קבצים
     allowed_types = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav", "audio/webm", "audio/ogg"}
     if source_audio.content_type not in allowed_types:
         return JSONResponse(status_code=400, content={"error": f"Unsupported file type for source_audio: {source_audio.content_type}"})
     if reference_audio.content_type not in allowed_types:
         return JSONResponse(status_code=400, content={"error": f"Unsupported file type for reference_audio: {reference_audio.content_type}"})
 
-    # קריאת תוכן הקבצים
     source_bytes = await source_audio.read()
     reference_bytes = await reference_audio.read()
 
@@ -65,13 +70,7 @@ async def convert_voice_eden(
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
         try:
-            # שליחת הבקשה ל-Eden AI
-            response = await client.post(
-                EDEN_API_URL,
-                headers=headers,
-                data=payload,
-                files=files
-            )
+            response = await client.post(EDEN_API_URL, headers=headers, data=payload, files=files)
 
             if response.status_code == 200:
                 result_data = response.json()
