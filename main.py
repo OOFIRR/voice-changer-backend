@@ -1,5 +1,5 @@
 # ================================================
-# קוד מעודכן ובטוח ל-main.py
+# קוד סופי, מעודכן ומאובטח לקובץ main.py
 # ================================================
 import uvicorn
 import httpx
@@ -10,9 +10,8 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 # שלב 1: קריאת מפתח ה-API ממשתני הסביבה שהגדרת ב-Render
-# זו הדרך הנכונה והמאובטחת. אין צורך להכניס כאן את המפתח ידנית.
-EDEN_API_KEY = os.environ.get(eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYzU5YTM0MDItMjhlYS00MDI4LWE1M2EtOTU3OTgxZGU2NzY1IiwidHlwZSI6ImFwaV90b2tlbiJ9.RJqp0CA61hCruLSis67GpByMOCx9EpJEaAJP6KvpQ-g
-)
+# זו הדרך הנכונה והמאובטחת. הקוד הזה ימשוך את המפתח שהגדרת ב-Render.
+EDEN_AI_API_KEY = os.environ.get("EDEN_AI_API_KEY")
 EDEN_API_URL = "https://api.edenai.run/v2/audio/speech_to_speech"
 
 app = FastAPI()
@@ -25,10 +24,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# נקודת קצה לבדיקה שהשרת חי
+# נקודת קצה לבדיקה שהשרת חי ושהוא מעודכן לגרסה הנכונה
 @app.get("/")
 def read_root():
-    return {"Status": "Backend is running and updated!"}
+    # זו ההודעה החדשה שנוכל לבדוק כדי לוודא שהעדכון הצליח
+    return {"message": "שרת מעודכן ומוכן לפעולה!"}
 
 # נקודת הקצה המרכזית שמבצעת את המרת הקול
 @app.post("/convert-voice-eden/")
@@ -36,8 +36,8 @@ async def convert_voice_eden(
     source_audio: UploadFile = File(...), 
     reference_audio: UploadFile = File(...)
 ):
-    # שלב 2: בדיקה האם המפתח נטען בהצלחה מההגדרות ב-Render
-    if not EDEN_API_KEY:
+    # בדיקה חשובה: האם המפתח נטען בהצלחה מההגדרות ב-Render?
+    if not EDEN_AI_API_KEY:
          return JSONResponse(
             status_code=500, 
             content={"error": "EDEN_AI_API_KEY environment variable not found on the server."}
@@ -58,7 +58,7 @@ async def convert_voice_eden(
 
     async with httpx.AsyncClient() as client:
         try:
-            # שלב 3: שליחת הבקשה ל-Eden AI עם המפתח הנכון
+            # שליחת הבקשה ל-Eden AI עם המפתח הנכון
             response = await client.post(EDEN_API_URL, headers=headers, data=payload, files=files, timeout=60.0)
             
             if response.status_code == 200:
