@@ -1,5 +1,2 @@
-fastapi
-uvicorn
+flask
 httpx
-python-multipart
-gunicorn
